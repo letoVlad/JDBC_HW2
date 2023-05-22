@@ -6,7 +6,7 @@ import org.springframework.jdbc.core.RowMapper;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class EmployeeMapper implements RowMapper<Employee> {
+public class EmployeeMapper implements RowMapper<Employee>  {
     public Employee mapRow(ResultSet rs, int rowNum) throws SQLException {
         int id = rs.getInt("id");
         String firstName = rs.getString("first_name");

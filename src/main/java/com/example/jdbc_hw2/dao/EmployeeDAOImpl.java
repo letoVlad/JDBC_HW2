@@ -1,6 +1,9 @@
 package com.example.jdbc_hw2.dao;
 
+import com.example.jdbc_hw2.config.HibernateSessionFactoryUtil;
 import com.example.jdbc_hw2.model.Employee;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -11,7 +14,6 @@ import java.util.List;
 public class EmployeeDAOImpl implements EmployeeDAO {
     private final JdbcTemplate jdbcTemplate;
 
-
     @Autowired
     public EmployeeDAOImpl(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -20,40 +22,61 @@ public class EmployeeDAOImpl implements EmployeeDAO {
     //Создание(добавление) сущности Employee в таблицу
     @Override
     public Employee addEmployee(Employee employee) {
-        jdbcTemplate.update("INSERT INTO Employee (first_name, last_name, gender, age, city_id) " +
-                        "VALUES (?,?,?,?,?)", employee.getFirst_name(), employee.getLast_name(), employee.getGender(),
-                employee.getAge(), employee.getCity_id());
+        try (Session session = HibernateSessionFactoryUtil.getSessionFactory().openSession();) {
+            Transaction transaction = session.beginTransaction();
+            session.save(employee);
+            transaction.commit();
+        }
         return employee;
     }
 
     //Получение конкретного объекта Employee по id
     public Employee findById(Integer id) {
-        return jdbcTemplate.query("SELECT * FROM Employee WHERE id = ?",
-                new Object[]{id}, new EmployeeMapper()).stream().findAny().orElse(null);
+        return HibernateSessionFactoryUtil.getSessionFactory()
+                .openSession()
+                .get(Employee.class, id);
     }
 
     //Получение списка всех объектов Employee из базы
     @Override
     public List<Employee> getAllEmployee() {
-        return jdbcTemplate.query("SELECT * FROM Employee", new EmployeeMapper());
+        List<Employee> employeeList = (List<Employee>) HibernateSessionFactoryUtil
+                .getSessionFactory()
+                .openSession()
+                .createQuery("From Employee").list();
+        return employeeList;
     }
 
     //Изменение конкретного объекта Employee в базе по id
     @Override
     public Employee editEmployee(Integer id, Employee employee) {
-        jdbcTemplate.update("UPDATE Employee SET first_name = ?, " +
-                        "last_name = ?, gender = ?, age = ?, city_id= ? WHERE id = ?",
-                employee.getLast_name(), employee.getFirst_name(), employee.getGender(),
-                employee.getAge(), employee.getCity_id(), id);
-        return employee;
+        try (Session session = HibernateSessionFactoryUtil.getSessionFactory().openSession()) {
+            Employee editEmployee = session.get(Employee.class, id);
+            if (editEmployee != null) {
+                session.getTransaction().begin();
+                editEmployee.setAge(employee.getAge());
+                editEmployee.setCity_id(employee.getCity_id());
+                editEmployee.setFirst_name(employee.getFirst_name());
+                editEmployee.setLast_name(employee.getLast_name());
+                editEmployee.setGender(employee.getGender());
+                session.getTransaction().commit();
+            }
+            return editEmployee;
+        }
     }
 
     //Удаление конкретного объекта Employee из базы по id
     @Override
     public Boolean deleteId(Integer id) {
-        jdbcTemplate.update("DELETE FROM Application WHERE id=?", id);
-        return true;
+        try (Session session = HibernateSessionFactoryUtil.getSessionFactory().openSession()) {
+            Employee deleteEmploye = session.get(Employee.class, id);
+            if (deleteEmploye != null) {
+                session.getTransaction().begin();
+                session.delete(deleteEmploye);
+                session.getTransaction().commit();
+                return true;
+            }
+        }
+        return false;
     }
-
-
 }
